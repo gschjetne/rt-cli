@@ -1,0 +1,21 @@
+# Proposes updates as pull requests: the actions CI runs (pinned to commits, which
+# Dependabot moves along with their tags) and the Rust dependencies.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # New releases wait a while before they are proposed: time for a compromised one to be
+    # found and pulled.
+    cooldown:
+      default-days: 14
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14

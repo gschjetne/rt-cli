@@ -1,0 +1,115 @@
+name: ci
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+      - run: sh -n install/install.sh
+
+  # Known advisories, licences and where crates come from (deny.toml).
+  deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+
+  # rt for every system, named as the installers ask for it.
+  build:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: x86_64-unknown-linux-musl, os: ubuntu-latest, zig: true, name: rt-x86_64-linux }
+          - { target: aarch64-unknown-linux-musl, os: ubuntu-latest, zig: true, name: rt-aarch64-linux }
+          - { target: x86_64-pc-windows-gnu, os: ubuntu-latest, zig: true, exe: .exe, name: rt-x86_64-windows.exe }
+          - { target: aarch64-apple-darwin, os: macos-latest, zig: false, name: rt-aarch64-macos }
+          - { target: x86_64-apple-darwin, os: macos-latest, zig: false, name: rt-x86_64-macos }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: ${{ matrix.target }}
+      - if: matrix.zig
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
+      - if: matrix.zig
+        run: cargo install --locked cargo-zigbuild --version 0.23.4
+      - name: build
+        shell: bash
+        run: |
+          if ${{ matrix.zig }}; then
+            cargo zigbuild --locked --release -p rt --target ${{ matrix.target }}
+          else
+            cargo build --locked --release -p rt --target ${{ matrix.target }}
+          fi
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/rt${{ matrix.exe }} dist/${{ matrix.name }}
+          ls -l dist
+      - if: contains(matrix.target, 'linux')
+        name: static
+        run: file dist/* | tee /dev/stderr | grep -q 'statically linked'
+      - if: matrix.target == 'x86_64-unknown-linux-musl' || matrix.os == 'macos-latest' && matrix.target == 'aarch64-apple-darwin'
+        name: runs
+        run: dist/${{ matrix.name }} --version
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ matrix.name }}
+          path: dist/*
+
+  # A tag v<version>, the version in Cargo.toml, publishes the builds, their SHA256SUMS
+  # and the installers as a GitHub release, with build provenance for each build.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, deny]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: the tag is the version
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
+          [ "$GITHUB_REF_NAME" = "v$version" ] || { echo "::error::tag $GITHUB_REF_NAME, but Cargo.toml says $version"; exit 1; }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: dist
+          merge-multiple: true
+      - run: |
+          (cd dist && sha256sum rt-* > SHA256SUMS)
+          cp install/install.sh install/install.ps1 dist/
+          ls -l dist
+          cat dist/SHA256SUMS
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/rt-*
+      - run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
