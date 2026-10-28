@@ -84,6 +84,28 @@ Numbers are not written in the document. The session numbers decisions in order 
 appearance and never reuses a number, so "decision 4" means the same thing for the whole
 session even after others are withdrawn. Refer to decisions by number.
 
+### Linking to other reviews
+
+A link whose target is `review:<id>` goes to another review on the same instance;
+`rt review list` shows the ids. Add `#<section>` to go to a part of it:
+
+| Target | Goes to |
+|---|---|
+| `review:k3x9tq2m` | The review |
+| `review:k3x9tq2m#4` | Its decision 4 |
+| `review:k3x9tq2m#cache-strategy` | Its decision with the id `cache-strategy` |
+| `review:k3x9tq2m#cache-keys` | Its heading `## Cache keys`: lower case, spaces as hyphens, punctuation dropped, as on GitHub. A repeated heading gets `-1`, `-2`… |
+
+`[the caching review](review:k3x9tq2m)` shows your words; `<review:k3x9tq2m#4>` shows
+the review's title and the decision, to readers who may see that review. The review's
+page address (`https://<instance>/sessions/k3x9tq2m#d-4`) works too, as the human copies
+it from the browser.
+
+The review you link to lists yours under "Referred to by", for readers who may see both.
+That needs you to be able to see it; `rt review open` and `rt review update` warn about
+a link to a review you cannot see, which stays a plain link. Links in the log's notes
+point at the review but are not listed there.
+
 `rt review open` and `rt review update` check the document before sending it and list
 every problem with its line number.
 

@@ -43,7 +43,10 @@ time.
 
    Kinds: `go-nogo`, `choice` (add `multi: true` for several answers), `text`. The human
    can add free text to every decision. Ids are stable: keep them when you revise.
-   Numbers are assigned by the session. See
+   Numbers are assigned by the session. Link to another review, or to a part of it,
+   with `review:<id>`: `[the CI review](review:k3x9tq2m)`, `<review:k3x9tq2m#4>` (decision
+   4), `<review:k3x9tq2m#cache-keys>` (a decision's id, or a heading's GitHub-style
+   anchor); `rt review list` shows ids. See
    https://github.com/gschjetne/rt-cli/blob/master/docs/agent/writing-review-documents.md
    for the full format and advice.
 
