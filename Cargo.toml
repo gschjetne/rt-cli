@@ -3,14 +3,14 @@ resolver = "3"
 members = ["crates/rt-client", "crates/rt"]
 
 [workspace.package]
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.94.1"
 license = "MIT"
 repository = "https://github.com/gschjetne/rt-cli"
 
 [workspace.dependencies]
-rt-api = { git = "https://github.com/gschjetne/rt-api", tag = "v0.1.0" }
+rt-api = { git = "https://github.com/gschjetne/rt-api", tag = "v0.1.1" }
 rt-client = { path = "crates/rt-client" }
 
 serde = { version = "1", features = ["derive"] }

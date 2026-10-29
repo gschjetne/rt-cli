@@ -790,7 +790,7 @@ dependencies = [
 
 [[package]]
 name = "rt"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -810,8 +810,8 @@ dependencies = [
 
 [[package]]
 name = "rt-api"
-version = "0.1.0"
-source = "git+https://github.com/gschjetne/rt-api?tag=v0.1.0#7d238a051a43e35b19fc88f970d8545059bf825e"
+version = "0.1.1"
+source = "git+https://github.com/gschjetne/rt-api?tag=v0.1.1#6925253df681e729b775f861472e6e177c2723e2"
 dependencies = [
  "jiff",
  "pulldown-cmark",
@@ -823,7 +823,7 @@ dependencies = [
 
 [[package]]
 name = "rt-client"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "dirs",
  "libc",

@@ -1,4 +1,7 @@
-//! `rt init`: connect this repository to a review-tools instance. The
+//! `rt init`: connect this repository to a review-tools instance. A clone of a
+//! repository on GitHub connects to its project, which installing the GitHub App makes; any
+//! other clone (no remote, or one on a host review-tools knows nothing of, such as Gerrit)
+//! connects to a project of the person's own, by name, which only they can see. The
 //! browser does the signing in, installing the app and confirming; rt listens on a
 //! loopback port for the way back, and exchanges the one-time code it brings, with a PKCE
 //! verifier only this process knows, for an agent token (RFC 8252 and RFC 7636).
@@ -26,6 +29,49 @@ pub struct InitArgs {
     /// Print the address to open instead of opening a browser.
     #[arg(long)]
     no_browser: bool,
+    /// For a repository not on GitHub: the name of your project (default: the clone's
+    /// directory name). The same name in another clone connects to the same project.
+    #[arg(long)]
+    name: Option<String>,
+}
+
+/// What a clone connects to.
+#[derive(Debug, PartialEq)]
+enum Target {
+    /// The project of a repository on GitHub, `owner/repo`.
+    GitHub(String),
+    /// A project of the person's own, by name, and why: the clone is on no code host
+    /// review-tools knows.
+    Own { name: String, why: String },
+}
+
+fn target(
+    remote: Option<&str>,
+    name: Option<&str>,
+    top: &std::path::Path,
+) -> anyhow::Result<Target> {
+    let on_github = remote
+        .filter(|r| r.contains("github.com"))
+        .and_then(rt_api::remote::repo_full_name);
+    if let Some(full_name) = on_github {
+        if name.is_some() {
+            bail!(
+                "{full_name} is on GitHub, so rt init connects it to its project through the GitHub App; --name is for repositories that are not"
+            );
+        }
+        return Ok(Target::GitHub(full_name));
+    }
+    let name = name
+        .map(str::trim)
+        .filter(|n| !n.is_empty())
+        .map(str::to_owned)
+        .or_else(|| top.file_name().map(|n| n.to_string_lossy().into_owned()))
+        .unwrap_or_else(|| "project".into());
+    let why = match remote {
+        Some(r) => format!("Its `origin` remote, {r}, is on no code host review-tools knows"),
+        None => "This repository has no `origin` remote".to_owned(),
+    };
+    Ok(Target::Own { name, why })
 }
 
 fn random(bytes: usize) -> String {
@@ -160,17 +206,7 @@ pub fn run(args: InitArgs, json: bool) -> anyhow::Result<()> {
     let top = rt_client::repo_top(std::path::Path::new(&repo))
         .context("rt init runs inside a git repository")?;
     let remote = crate::review::origin_remote(&repo);
-    let Some(full_name) = remote
-        .as_deref()
-        .filter(|r| r.contains("github.com"))
-        .and_then(rt_api::remote::repo_full_name)
-    else {
-        let found = match &remote {
-            Some(r) => format!("its `origin` remote, {r}, is not on GitHub"),
-            None => "it has no `origin` remote".to_owned(),
-        };
-        bail!("rt init connects a repository on GitHub to a review-tools instance, and {found}.");
-    };
+    let target = target(remote.as_deref(), args.name.as_deref(), &top)?;
 
     let endpoint = std::env::var("RT_ENDPOINT")
         .ok()
@@ -202,19 +238,30 @@ pub fn run(args: InitArgs, json: bool) -> anyhow::Result<()> {
     let verifier = random(32);
     let challenge = URL_SAFE_NO_PAD.encode(Sha256::digest(verifier.as_bytes()));
     let state = random(16);
+    let what = match &target {
+        Target::GitHub(full_name) => format!("repo={}", segment(full_name)),
+        Target::Own { name, .. } => format!("name={}", segment(name)),
+    };
     let mut url = format!(
-        "{endpoint}/connect?repo={}&redirect_uri={}&state={}&code_challenge={}&code_challenge_method=S256&client={}",
-        segment(&full_name),
+        "{endpoint}/connect?{what}&redirect_uri={}&state={}&code_challenge={}&code_challenge_method=S256&client={}",
         segment(&redirect_uri),
         segment(&state),
         segment(&challenge),
         segment(&machine_name()),
     );
-    if let Some(id) = repo_id_from_gh(&full_name) {
-        url.push_str(&format!("&repo_id={id}"));
+    match &target {
+        Target::GitHub(full_name) => {
+            if let Some(id) = repo_id_from_gh(full_name) {
+                url.push_str(&format!("&repo_id={id}"));
+            }
+            eprintln!("Connecting {full_name} to {endpoint}.");
+        }
+        Target::Own { name, why } => eprintln!(
+            "{why}, so rt init connects it to a project of your own on {endpoint}, \
+             named after `{name}` (--name chooses another). Only you can see its reviews, \
+             and nobody can be invited to them."
+        ),
     }
-
-    eprintln!("Connecting {full_name} to {endpoint}.");
     let opened = !args.no_browser && open_browser(&url);
     if opened {
         eprintln!("Your browser should open; if it does not, open:\n\n  {url}\n");
@@ -285,4 +332,32 @@ pub fn run(args: InitArgs, json: bool) -> anyhow::Result<()> {
         config.display()
     );
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn github_clones_and_the_rest() {
+        let top = Path::new("/home/me/My App");
+        assert_eq!(
+            target(Some("git@github.com:octo/app.git"), None, top).unwrap(),
+            Target::GitHub("octo/app".into())
+        );
+        assert!(target(Some("https://github.com/octo/app"), Some("x"), top).is_err());
+        let Target::Own { name, why } =
+            target(Some("ssh://gerrit.example.com:29418/team/app"), None, top).unwrap()
+        else {
+            panic!("not its own")
+        };
+        assert_eq!(name, "My App");
+        assert!(why.contains("gerrit.example.com"), "{why}");
+        let Target::Own { name, why } = target(None, Some(" demo "), top).unwrap() else {
+            panic!("not its own")
+        };
+        assert_eq!(name, "demo");
+        assert!(why.contains("no `origin`"), "{why}");
+    }
 }
