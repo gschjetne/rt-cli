@@ -810,8 +810,8 @@ dependencies = [
 
 [[package]]
 name = "rt-api"
-version = "0.1.2"
-source = "git+https://github.com/gschjetne/rt-api?tag=v0.1.2#8c80aa9006dce4f5ae3ee1729753c3181421994b"
+version = "0.1.0"
+source = "git+https://github.com/gschjetne/rt-api?tag=v0.1.0#7d238a051a43e35b19fc88f970d8545059bf825e"
 dependencies = [
  "jiff",
  "pulldown-cmark",
