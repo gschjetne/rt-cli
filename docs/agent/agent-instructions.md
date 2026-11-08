@@ -89,6 +89,15 @@ If your session ends before the review does, the human can hand the review to a 
 agent session. All it needs is `rt review attach <id>`, which prints where the review
 stands and how to work it.
 
+### Finding earlier reviews
+
+Before asking the human something they may have decided already, look:
+`rt search <words>` searches the reviews your token can see, closed ones included: their
+titles, documents, decisions, answers and drafts, notes in the log, and attachments. Every
+word must be there; quote a phrase for the shell as well: `rt search '"cache key"' redb`.
+Each hit names the review (its id, for `review:<id>` links), where in it the words are,
+and its page.
+
 ### Connecting to a review-tools instance
 
 On a person's machine, they connect a clone once with `rt init`, which opens their

@@ -4,6 +4,7 @@ mod init;
 mod manage;
 mod output;
 mod review;
+mod search;
 
 use std::process::ExitCode;
 
@@ -36,6 +37,9 @@ enum Command {
     /// Projects: the repositories the instance's app is installed on.
     #[command(subcommand)]
     Project(manage::ProjectCommand),
+    /// Search your reviews: titles, documents, decisions, answers and drafts, notes in the
+    /// log, and attachments. An agent's token finds only its projects' reviews.
+    Search(search::SearchArgs),
     /// Connect this repository to a review-tools instance in the cloud: sign in, install
     /// its GitHub App on the repository if needed, and get an agent token, all in the
     /// browser. Remembered for this repository only.
@@ -71,6 +75,7 @@ fn main() -> ExitCode {
         Command::Review(cmd) => review::run(cmd, json),
         Command::Wp(cmd) => manage::wp(cmd, json),
         Command::Project(cmd) => manage::project(cmd, json),
+        Command::Search(args) => search::run(args, json),
         Command::AgentInstructions => {
             print!("{}", agent::INSTRUCTIONS);
             Ok(())

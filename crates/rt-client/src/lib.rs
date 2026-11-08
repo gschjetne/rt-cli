@@ -460,6 +460,18 @@ impl Client {
         )
     }
 
+    // Search
+
+    /// Search the caller's reviews: a person's own, an agent's in its token's projects.
+    /// The server takes at most 50 hits, 20 unless asked.
+    pub fn search(&self, query: &str, limit: Option<u32>) -> Result<SearchResults> {
+        let mut path = format!("/search?q={}", segment(query));
+        if let Some(limit) = limit {
+            path.push_str(&format!("&limit={limit}"));
+        }
+        self.get(&path)
+    }
+
     // Sessions
 
     pub fn sessions(
