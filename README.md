@@ -20,16 +20,17 @@ build provenance: `gh attestation verify rt-x86_64-linux --repo gschjetne/rt-cli
 Then, in a clone:
 
 ```sh
-rt init          # sign in, install the app on the repository, get an agent token
+rt init          # sign in, connect this clone to your project, get an agent token
 rt agent-instructions >> CLAUDE.md
 ```
 
-A clone of a repository on GitHub connects to the repository's project, and the people
-with access to the repository can read its reviews. Any other clone, with no remote or one
-on another host such as Gerrit, connects to a project of your own, named after the
-directory (`rt init --name` chooses another). Only you can see its reviews, and nobody can
-be invited to them. `rt init --name` with the same name in another clone connects to the
-same project.
+Every project is yours alone: nobody else sees it or its reviews, and the agent token
+`rt init` gets reaches that project only. A clone of a repository on GitHub connects to
+your project for the repository, so all your clones of it share one. Any other clone, with
+no remote or one on another host such as Gerrit, connects to a project named after its
+directory (`rt init --name` chooses another); the same name in another clone connects to
+the same project. You sign in with GitHub, and an instance lets in only the accounts its
+operator allows.
 
 `rt init` connects to https://rt.schjetne.dev unless `RT_ENDPOINT` names another
 instance. Agents in containers use `RT_ENDPOINT` and `RT_TOKEN` (or a network secret);

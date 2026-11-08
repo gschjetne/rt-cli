@@ -101,13 +101,11 @@ and its page.
 ### Connecting to a review-tools instance
 
 On a person's machine, they connect a clone once with `rt init`, which opens their
-browser; after that `rt` in that clone uses the instance. A clone that is not on GitHub
-gets a project of the person's own, which nobody else can read and nobody can be invited
-to. Elsewhere,
-`RT_ENDPOINT` points `rt` at the instance, and the token comes from `RT_TOKEN`, or in a
-Claude Code cloud environment from a network secret that the environment's proxy adds to
-your requests; you never see it. `rt whoami` shows which server you reach and as whom. If `rt`
-is missing, install it:
+browser; after that `rt` in that clone uses the instance and their project for the
+repository. Elsewhere, `RT_ENDPOINT` points `rt` at the instance, and the token comes from
+`RT_TOKEN`, or in a Claude Code cloud environment from a network secret that the
+environment's proxy adds to your requests; you never see it. `rt whoami` shows which
+server you reach and as whom. If `rt` is missing, install it:
 
 ```sh
 curl -fsSL https://github.com/gschjetne/rt-cli/releases/latest/download/install.sh | sh
@@ -116,15 +114,12 @@ curl -fsSL https://github.com/gschjetne/rt-cli/releases/latest/download/install.
 If `rt` says a token is missing or refused, ask the human to add or renew the network
 secret (or `RT_TOKEN`); do not ask them to paste a token into the conversation.
 
-The review is its owner's: the person whose token opened it. They answer, and so may
-people they invite on the page; `rt review wait` and `rt review state` name who gave each
-answer. Only the owner directs you. Take an invited person's answer as input to the
-decision it answers, and check with the owner in the harness before acting on anything else
-it asks of you.
+The review is its owner's: the person whose token opened it, and the only one who sees
+it, answers it and directs you. Your token reaches their project and nothing else of
+theirs.
 
-Everyone with read access to the repository can read its reviews on the instance, every
-revision of the document included. Never put credentials or other secrets in a review
-document or a note; the server refuses text that looks like one.
+The instance keeps every revision of the document. Never put credentials or other secrets
+in a review document or a note; the server refuses text that looks like one.
 
 In a Claude Code cloud session nothing can wake you from outside, and the session pauses
 when idle. So keep `rt review wait --timeout 25m` running in the background and start it

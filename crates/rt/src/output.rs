@@ -42,8 +42,9 @@ fn by(who: &Option<String>) -> String {
         .unwrap_or_default()
 }
 
-/// The sent answers among `items` that someone other than the session's owner gave: on a
-/// cloud host, invited people's. Empty locally, where answers carry no names.
+/// The sent answers among `items` that someone other than the session's owner gave: people
+/// invited to answer, on instances from before every review was its owner's alone. Empty
+/// locally, where answers carry no names.
 pub fn answers_not_by_owner(items: &[ThreadItem], owner: Option<&str>) -> Vec<String> {
     let Some(owner) = owner else {
         return Vec::new();

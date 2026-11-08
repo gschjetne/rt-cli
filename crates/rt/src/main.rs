@@ -34,15 +34,15 @@ enum Command {
     /// Work packages: a milestone's worth of work.
     #[command(subcommand)]
     Wp(manage::WpCommand),
-    /// Projects: the repositories the instance's app is installed on.
+    /// Projects: yours, one for each repository or name you connected with rt init.
     #[command(subcommand)]
     Project(manage::ProjectCommand),
     /// Search your reviews: titles, documents, decisions, answers and drafts, notes in the
     /// log, and attachments. An agent's token finds only its projects' reviews.
     Search(search::SearchArgs),
-    /// Connect this repository to a review-tools instance in the cloud: sign in, install
-    /// its GitHub App on the repository if needed, and get an agent token, all in the
-    /// browser. Remembered for this repository only.
+    /// Connect this repository to a review-tools instance in the cloud: sign in in the
+    /// browser, connect the clone to your project for it, and get an agent token for that
+    /// project. Remembered for this repository only.
     Init(init::InitArgs),
     /// Print the snippet for a project's agent instructions file (CLAUDE.md, AGENTS.md).
     AgentInstructions,

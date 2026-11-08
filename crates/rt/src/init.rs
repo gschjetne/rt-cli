@@ -1,9 +1,9 @@
-//! `rt init`: connect this repository to a review-tools instance. A clone of a
-//! repository on GitHub connects to its project, which installing the GitHub App makes; any
-//! other clone (no remote, or one on a host review-tools knows nothing of, such as Gerrit)
-//! connects to a project of the person's own, by name, which only they can see. The
-//! browser does the signing in, installing the app and confirming; rt listens on a
-//! loopback port for the way back, and exchanges the one-time code it brings, with a PKCE
+//! `rt init`: connect this repository to a review-tools instance. Every project is the
+//! person's own, and only they see it (review-tools Decision 47): a clone of a repository
+//! on GitHub connects to their project for that repository, made the first time; any other
+//! clone (no remote, or one on another host, such as Gerrit) connects to their project by
+//! name. The browser does the signing in and confirming; rt listens on a loopback port for
+//! the way back, and exchanges the one-time code it brings, with a PKCE
 //! verifier only this process knows, for an agent token (RFC 8252 and RFC 7636).
 
 use std::io::{BufRead, BufReader, Write};
@@ -38,10 +38,9 @@ pub struct InitArgs {
 /// What a clone connects to.
 #[derive(Debug, PartialEq)]
 enum Target {
-    /// The project of a repository on GitHub, `owner/repo`.
+    /// The person's project for a repository on GitHub, `owner/repo`.
     GitHub(String),
-    /// A project of the person's own, by name, and why: the clone is on no code host
-    /// review-tools knows.
+    /// The person's project by name, and why: the clone has no remote on GitHub.
     Own { name: String, why: String },
 }
 
@@ -56,7 +55,7 @@ fn target(
     if let Some(full_name) = on_github {
         if name.is_some() {
             bail!(
-                "{full_name} is on GitHub, so rt init connects it to its project through the GitHub App; --name is for repositories that are not"
+                "{full_name} is on GitHub, so rt init connects it to your project for that repository; --name is for clones that are not on GitHub"
             );
         }
         return Ok(Target::GitHub(full_name));
@@ -68,7 +67,7 @@ fn target(
         .or_else(|| top.file_name().map(|n| n.to_string_lossy().into_owned()))
         .unwrap_or_else(|| "project".into());
     let why = match remote {
-        Some(r) => format!("Its `origin` remote, {r}, is on no code host review-tools knows"),
+        Some(r) => format!("Its `origin` remote, {r}, is not on GitHub"),
         None => "This repository has no `origin` remote".to_owned(),
     };
     Ok(Target::Own { name, why })
@@ -127,9 +126,9 @@ fn open_browser(url: &str) -> bool {
     run("xdg-open", &[url])
 }
 
-/// The repository's id on GitHub, from the `gh` CLI where it is installed and signed in.
-/// The install page can then choose this repository alone in advance, which it cannot do
-/// for a private repository the app is not on yet without being told its id.
+/// The repository's id on GitHub, from the `gh` CLI where it is installed and signed in,
+/// which the instance keeps with the project: the repository's name can change, its id
+/// does not.
 fn repo_id_from_gh(full_name: &str) -> Option<u64> {
     let output = std::process::Command::new("gh")
         .args(["api", &format!("repos/{full_name}"), "--jq", ".id"])
@@ -254,12 +253,11 @@ pub fn run(args: InitArgs, json: bool) -> anyhow::Result<()> {
             if let Some(id) = repo_id_from_gh(full_name) {
                 url.push_str(&format!("&repo_id={id}"));
             }
-            eprintln!("Connecting {full_name} to {endpoint}.");
+            eprintln!("Connecting {full_name} to your project for it on {endpoint}.");
         }
         Target::Own { name, why } => eprintln!(
-            "{why}, so rt init connects it to a project of your own on {endpoint}, \
-             named after `{name}` (--name chooses another). Only you can see its reviews, \
-             and nobody can be invited to them."
+            "{why}, so rt init connects it to your project named after `{name}` on \
+             {endpoint} (--name chooses another)."
         ),
     }
     let opened = !args.no_browser && open_browser(&url);
